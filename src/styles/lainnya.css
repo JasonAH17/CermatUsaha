@@ -1,0 +1,38 @@
+.profile-card {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border-radius: var(--radius); text-align: left;
+  background: var(--surface); border: 1px solid var(--line);
+}
+.profile-card .biz-avatar {
+  width: 46px; height: 46px; flex-shrink: 0; border-radius: 15px;
+  display: grid; place-items: center;
+  background: var(--brand); color: #fff; font-weight: 800; font-size: 19px;
+}
+.profile-card .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.profile-card strong { font-size: 17px; }
+.profile-card small { font-size: 13px; color: var(--muted); }
+.profile-card > .icon { font-size: 20px; color: var(--muted); }
+
+/* Fitur utama */
+.menu-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.menu-tile {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  padding: 14px; border-radius: var(--radius); text-align: left;
+  background: var(--surface); border: 1px solid var(--line);
+}
+.menu-tile .row-icon { margin-bottom: 6px; }
+.menu-tile strong { font-size: 15.5px; }
+.menu-tile small { font-size: 13px; color: var(--muted); }
+
+.menu-group { display: flex; flex-direction: column; gap: 8px; }
+.menu-group h3 { padding: 8px 4px 0; font-size: 14px; font-weight: 700; color: var(--muted); }
+
+.app-version { padding: 8px 0; text-align: center; font-size: 12.5px; color: var(--muted); }
+
+/* Catatan */
+.catatan-list { display: flex; flex-direction: column; gap: 8px; }
+.note { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-2); }
+.note-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.note p { font-size: 14px; color: var(--text-2); white-space: pre-wrap; }
+.note .tag { align-self: flex-start; }
+.note .icon-btn.sm { background: var(--surface); }

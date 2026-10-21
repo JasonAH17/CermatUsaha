@@ -1,0 +1,43 @@
+/* Halaman Masuk / Daftar tampil tanpa navigasi bawah */
+body.auth-mode .bottom-nav { display: none; }
+body.auth-mode .view { padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
+
+.auth { display: flex; flex-direction: column; gap: 20px; max-width: 400px; margin: 0 auto; padding-top: 8px; }
+
+.auth-brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; color: var(--brand-strong); }
+.auth-logo {
+  width: 40px; height: 40px; border-radius: 13px;
+  display: grid; place-items: center; background: var(--brand); color: #fff;
+}
+.auth-logo .icon { font-size: 24px; }
+
+.auth-head h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
+.auth-head p { margin-top: 6px; font-size: 15px; color: var(--text-2); }
+
+.auth-quick { display: flex; flex-direction: column; gap: 10px; }
+.btn-social {
+  background: var(--surface); border: 1.5px solid var(--line); color: var(--text);
+  gap: 12px;
+}
+.btn-social:active { background: var(--surface-2); }
+
+.auth-or { display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+.pass { position: relative; }
+.pass .input { padding-right: 52px; }
+.pass-toggle {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; color: var(--muted);
+}
+.pass-toggle:active { background: var(--surface-2); }
+.pass-rule { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); transition: color 0.2s; }
+.pass-rule .icon { font-size: 18px; }
+.pass-rule.ok { color: var(--in); }
+
+.auth-forgot { align-self: flex-end; margin-top: -8px; padding: 4px 0; }
+.btn[data-submit]:disabled { opacity: 0.7; }
+
+.auth-switch { text-align: center; font-size: 15px; color: var(--text-2); }
+.auth-switch a { font-weight: 800; color: var(--brand); }
+.auth-note { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12.5px; color: var(--muted); }

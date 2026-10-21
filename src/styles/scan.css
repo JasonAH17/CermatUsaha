@@ -1,0 +1,81 @@
+.scan { display: flex; flex-direction: column; gap: 16px; }
+
+/* Langkah 1 */
+.scan-hero { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 8px 4px; text-align: center; }
+.scan-hero strong { margin-top: 8px; font-size: 18px; }
+.scan-hero p { max-width: 300px; font-size: 14.5px; color: var(--muted); }
+.scan-actions { display: flex; flex-direction: column; gap: 10px; }
+.scan-sample { align-self: center; padding: 8px; }
+.scan-tips { list-style: none; display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: var(--radius-sm); background: var(--surface-2); }
+.scan-tips li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text-2); }
+.scan-tips .icon { font-size: 20px; color: var(--brand); }
+
+/* Langkah 2 */
+.scan-reading { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 4px 0 12px; }
+.scan-photo {
+  position: relative; overflow: hidden;
+  width: 100%; max-height: 46dvh; border-radius: var(--radius);
+  background: var(--surface-2); display: grid; place-items: center;
+}
+.scan-photo img { max-width: 100%; max-height: 46dvh; object-fit: contain; display: block; }
+.scan-beam {
+  position: absolute; left: 0; right: 0; top: 0; height: 3px;
+  background: var(--brand); box-shadow: 0 0 16px 4px rgba(14, 107, 92, 0.45);
+  animation: beam 1.8s ease-in-out infinite alternate;
+}
+@keyframes beam { to { transform: translateY(calc(46dvh - 3px)); } }
+.scan-progress { width: 100%; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.scan-progress span {
+  display: block; height: 100%; background: var(--brand);
+  transform-origin: left; transform: scaleX(0.02);
+  transition: transform 0.3s var(--ease-out);
+}
+.scan-reading p { font-size: 14px; font-weight: 600; color: var(--text-2); }
+
+/* Langkah 3 */
+.verify-banner {
+  display: flex; gap: 12px; padding: 14px; border-radius: var(--radius);
+  background: var(--brand-soft); color: var(--brand-strong);
+}
+.verify-banner.warn { background: var(--warn-soft); color: var(--warn); }
+.verify-banner > .icon { font-size: 26px; }
+.verify-banner strong { font-size: 16px; }
+.verify-banner p { margin-top: 2px; font-size: 13.5px; line-height: 1.45; color: var(--text-2); }
+
+.scan-thumb {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 8px 14px 8px 8px; border-radius: var(--radius-sm); text-align: left;
+  background: var(--surface-2);
+}
+.scan-thumb img { width: 52px; height: 52px; border-radius: 9px; object-fit: cover; object-position: top; background: #fff; transition: all 0.3s var(--ease-out); }
+.scan-thumb .grow { flex: 1; display: flex; flex-direction: column; }
+.scan-thumb small { font-size: 13px; color: var(--muted); }
+.scan-thumb .icon { color: var(--brand); }
+.scan-thumb.zoom { flex-direction: column; align-items: stretch; padding: 8px; }
+.scan-thumb.zoom img { width: 100%; height: auto; max-height: 70dvh; object-fit: contain; }
+.scan-thumb.zoom .grow, .scan-thumb.zoom > .icon { display: none; }
+
+.field-badged { position: relative; }
+.read-badge {
+  position: absolute; top: 0; right: 0;
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 8px 2px 6px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 700;
+}
+.read-badge .icon { font-size: 14px; }
+.read-badge.ok { background: var(--in-soft); color: var(--in); }
+.read-badge.manual { background: var(--warn-soft); color: var(--warn); }
+.row2 .read-badge { position: static; align-self: flex-start; margin-top: 6px; }
+.row2 .field-badged { display: flex; flex-direction: column; }
+
+.scan-lines { display: flex; flex-direction: column; gap: 8px; }
+.scan-lines:empty { display: none; }
+.scan-line { display: grid; grid-template-columns: 1fr 110px 38px; gap: 6px; align-items: center; animation: rise 0.22s var(--ease-out); }
+.scan-line .input { height: 44px; font-size: 15px; padding: 0 10px; }
+.scan-line [data-harga] { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.scan-raw summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); }
+.scan-raw pre {
+  margin-top: 8px; padding: 12px; border-radius: 10px; background: var(--surface-2);
+  font-size: 12px; white-space: pre-wrap; max-height: 200px; overflow: auto;
+}

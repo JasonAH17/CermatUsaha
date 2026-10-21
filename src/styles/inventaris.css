@@ -1,0 +1,30 @@
+.inv { display: flex; flex-direction: column; gap: 12px; }
+
+.inv-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stat { display: flex; flex-direction: column; gap: 2px; padding: 12px; }
+.stat small { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.stat strong { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stat.warn strong { color: var(--warn); }
+
+.inv-tools { display: flex; flex-direction: column; gap: 10px; }
+
+.inv-list { display: flex; flex-direction: column; gap: 8px; }
+.inv-list.animate .inv-item { animation: rise 0.3s var(--ease-out) both; animation-delay: calc(min(var(--i), 8) * 30ms); }
+
+.inv-item {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  padding: 12px; border-radius: var(--radius); text-align: left;
+  background: var(--surface); border: 1px solid var(--line);
+}
+.inv-item .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.inv-item .grow strong { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.inv-item .grow small { font-size: 13px; color: var(--muted); }
+
+.stok-bar { display: block; height: 5px; margin-top: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.stok-bar span { display: block; height: 100%; border-radius: 3px; background: var(--c); transition: width 0.5s var(--ease-out); }
+
+.inv-stok { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
+.inv-stok strong { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.inv-stok small { font-size: 12px; color: var(--muted); }
+.inv-stok.tipis strong { color: var(--warn); }
+.inv-stok.habis strong { color: var(--out); }

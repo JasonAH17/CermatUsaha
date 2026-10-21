@@ -1,0 +1,94 @@
+.ai-top {
+  position: sticky; top: 0; z-index: 30;
+  margin: -14px -16px 8px; padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background: rgba(245, 245, 242, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+.ai-top .titles small { display: flex; align-items: center; gap: 6px; }
+.ai-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--in); }
+.ai-dot.demo { background: var(--warn); }
+
+.ai-avatar {
+  width: 42px; height: 42px; flex-shrink: 0; border-radius: 14px;
+  display: grid; place-items: center; color: #fff; background: var(--brand);
+}
+.ai-avatar .icon { font-size: 21px; }
+.ai-avatar.sm { width: 30px; height: 30px; border-radius: 10px; }
+.ai-avatar.sm .icon { font-size: 16px; }
+.ai-avatar.lg { width: 68px; height: 68px; border-radius: 22px; }
+.ai-avatar.lg .icon { font-size: 34px; }
+
+.chat { display: flex; flex-direction: column; gap: 14px; padding-bottom: 96px; }
+
+.welcome {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 20px 0 0; text-align: center;
+  animation: rise 0.35s var(--ease-out);
+}
+.welcome h2 { margin-top: 6px; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.welcome > p { max-width: 340px; font-size: 15px; line-height: 1.55; color: var(--text-2); }
+
+.suggest { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: 10px; text-align: left; }
+.suggest > small { padding: 0 4px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.suggest-chip {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 52px; padding: 10px 14px; border-radius: 14px; text-align: left;
+  background: var(--surface); border: 1px solid var(--line);
+  font-size: 14.5px; font-weight: 600;
+  transition: transform 0.16s var(--ease-out), border-color 0.2s;
+}
+.suggest-chip:active { transform: scale(0.98); border-color: var(--brand); }
+.suggest-chip .icon { font-size: 20px; color: var(--brand); }
+@media (hover: hover) and (pointer: fine) {
+  .suggest-chip:hover { border-color: #cfd3cd; }
+}
+.chat-note { display: flex; gap: 6px; max-width: 340px; margin-top: 6px; font-size: 12.5px; line-height: 1.45; color: var(--muted); text-align: left; }
+
+.msg { display: flex; align-items: flex-end; gap: 8px; animation: rise 0.28s var(--ease-out); }
+.msg.user { justify-content: flex-end; }
+.bubble { max-width: 86%; padding: 12px 14px; border-radius: 18px; font-size: 15px; line-height: 1.55; }
+.msg.user .bubble { background: var(--brand); color: #fff; border-bottom-right-radius: 6px; }
+.msg.ai .bubble { background: var(--surface); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
+
+.bubble.md > * + * { margin-top: 8px; }
+.bubble.md ul, .bubble.md ol { padding-left: 20px; }
+.bubble.md li + li { margin-top: 4px; }
+.bubble.md strong { font-weight: 700; }
+.md-h { font-weight: 700; }
+
+.bubble.error { background: var(--out-soft) !important; color: var(--out); border-color: transparent !important; }
+.retry { margin-top: 8px; font-weight: 700; color: var(--out); text-decoration: underline; }
+
+.typing { display: flex; gap: 4px; padding: 15px 16px; }
+.typing span { width: 7px; height: 7px; border-radius: 50%; background: #9aa29f; animation: blink 1.2s infinite; }
+.typing span:nth-child(2) { animation-delay: 0.15s; }
+.typing span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes blink {
+  0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+
+.chat-dock {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 10px);
+  width: calc(min(100vw, var(--app-w)) - 24px); z-index: 40;
+  display: flex; align-items: flex-end; gap: 8px;
+  padding: 6px 6px 6px 16px; border-radius: 26px;
+  background: var(--surface); border: 1px solid var(--line);
+  box-shadow: 0 8px 28px rgba(18, 26, 24, 0.12);
+}
+.chat-dock textarea {
+  flex: 1; max-height: 120px; padding: 10px 0;
+  border: 0; outline: none; resize: none; background: transparent;
+  font: inherit; font-size: 16px; line-height: 1.4; color: var(--text);
+}
+.send {
+  width: 42px; height: 42px; flex-shrink: 0; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--brand); color: #fff;
+  transition: opacity 0.2s, transform 0.16s var(--ease-out);
+}
+.send:active { transform: scale(0.92); }
+.send:disabled { opacity: 0.4; }

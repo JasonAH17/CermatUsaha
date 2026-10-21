@@ -1,0 +1,81 @@
+.list-page { display: flex; flex-direction: column; gap: 12px; }
+
+/* Navigasi bulan */
+.month-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--line);
+}
+.month-nav strong { font-size: 16px; }
+.month-nav button { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; transition: background-color 0.15s; }
+.month-nav button:active:not(:disabled) { background: var(--surface-2); }
+.month-nav button:disabled { opacity: 0.3; }
+
+/* Ringkasan masuk / keluar */
+.flow-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.flow {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 12px 14px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--line);
+}
+.flow small { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.flow small .icon { font-size: 16px; }
+.flow strong { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.flow.in small .icon, .flow.in strong { color: var(--in); }
+.flow.out small .icon, .flow.out strong { color: var(--out); }
+
+/* Grup harian */
+.trx-list { display: flex; flex-direction: column; gap: 8px; }
+.day-group { display: flex; flex-direction: column; gap: 6px; }
+.day-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 4px 0; font-size: 13px; font-weight: 700; color: var(--muted); }
+
+.trx-list.animate .day-group,
+.pihak-list.animate .row-item {
+  animation: rise 0.3s var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 8) * 30ms);
+}
+
+/* ===== Detail transaksi (sheet) ===== */
+.detail { display: flex; flex-direction: column; gap: 16px; }
+.detail-hero { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 0 6px; }
+.detail-hero small { margin-top: 8px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.detail-hero strong { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+.detail-items { padding: 4px 14px; border-radius: var(--radius-sm); background: var(--surface-2); }
+.detail-items div { display: flex; justify-content: space-between; gap: 8px; padding: 10px 0; font-size: 15px; }
+.detail-items div + div { border-top: 1px dashed #cfd3cd; }
+.detail-items small { color: var(--muted); }
+
+.detail-rows div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.detail-rows dt { color: var(--muted); }
+.detail-rows dd { font-weight: 600; text-align: right; }
+
+/* ===== Detail kontak ===== */
+.balance-card {
+  padding: 18px; border-radius: var(--radius-lg);
+  background: var(--cs, var(--surface-2)); color: var(--c, var(--text));
+}
+.balance-card small { font-size: 14px; font-weight: 700; }
+.balance-card strong { display: block; margin-top: 2px; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.balance-card p { margin-top: 4px; font-size: 14px; color: var(--text-2); }
+
+.action-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.action {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 12px 4px; border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--line);
+  font-size: 12.5px; font-weight: 600;
+}
+.action .icon { color: var(--brand); }
+.action:disabled { opacity: 0.4; }
+
+.pihak-page, .report-page { padding-bottom: 80px; }
+.sticky-actions {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
+  width: 100%; max-width: var(--app-w); z-index: 40;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  padding: 14px 16px 12px;
+  background: linear-gradient(transparent, var(--bg) 30%);
+}
+.sticky-actions.single { grid-template-columns: 1fr; }

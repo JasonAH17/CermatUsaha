@@ -1,0 +1,40 @@
+.tutorial {
+  position: fixed; inset: 0; z-index: 900;
+  display: flex; flex-direction: column;
+  width: 100%; max-width: var(--app-w); margin: 0 auto;
+  padding: calc(12px + env(safe-area-inset-top)) 0 calc(20px + env(safe-area-inset-bottom));
+  background: var(--bg);
+  opacity: 0; transition: opacity 0.3s var(--ease-out);
+  overflow: hidden;
+}
+.tutorial.open { opacity: 1; }
+
+.tut-top { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; min-height: 44px; }
+.tut-brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 17px; color: var(--brand-strong); }
+.tut-brand .icon {
+  width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center;
+  background: var(--brand); color: #fff; font-size: 20px;
+}
+.tut-skip { padding: 10px 4px; font-size: 15px; font-weight: 700; color: var(--muted); }
+
+.tut-track { flex: 1; display: flex; transition: transform 0.45s var(--ease-drawer); }
+.tut-slide {
+  flex: 0 0 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 24px 32px; text-align: center;
+}
+.tut-art {
+  width: 132px; height: 132px; margin-bottom: 18px; border-radius: 40px;
+  display: grid; place-items: center;
+  background: var(--cs); color: var(--c);
+}
+.tut-art .icon { font-size: 64px; }
+.tut-slide h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
+.tut-slide p { max-width: 320px; font-size: 16px; line-height: 1.55; color: var(--text-2); }
+.tut-slide b { color: var(--text); }
+.tut-input { max-width: 340px; margin-top: 12px; text-align: center; font-weight: 600; }
+
+.tut-bottom { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 0 20px; }
+.tut-dots { display: flex; gap: 6px; }
+.tut-dots span { width: 7px; height: 7px; border-radius: 4px; background: #cfd3cd; transition: width 0.3s var(--ease-out), background-color 0.3s; }
+.tut-dots span.on { width: 22px; background: var(--brand); }
+.tut-demo[hidden] { display: none; }

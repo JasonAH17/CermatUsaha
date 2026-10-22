@@ -42,6 +42,9 @@ API key hanya dibaca oleh server (`server/ai.js`) dan tidak pernah dikirim ke br
 
 - `GEMINI_MODEL` – model pilihan; bawaannya `gemini-flash-latest` dengan cadangan `gemini-flash-lite-latest`
 - `AI_RATE_LIMIT` – batas pertanyaan per pengunjung per 10 menit (bawaan 20)
+- `AI_TOPIC_GUARD` – isi `on` untuk menambah penjaga topik terpisah sebelum model utama (lebih ketat, tapi 2 panggilan Gemini per pertanyaan)
+
+Cermat AI hanya menjawab seputar keuangan dan usaha. Instruksi dan batas topiknya ada di `server/prompt.js` (tidak bisa diubah dari browser); pertanyaan di luar topik dibalas dengan penolakan yang sama.
 
 ## Online di Vercel (gratis)
 

@@ -1,6 +1,6 @@
 import '../styles/ai.css';
 import { getProfil } from '../data/store.js';
-import { SYSTEM_PROMPT, buildContext } from '../data/aiContext.js';
+import { buildContext } from '../data/aiContext.js';
 import { askAI, aiStatus } from '../utils/ai.js';
 import { esc } from '../components/fields.js';
 
@@ -173,7 +173,7 @@ export const ai = {
         while (messages.length && messages[0].role !== 'user') messages.shift();
 
         const answer = await askAI({
-          system: `${SYSTEM_PROMPT}\n\nDATA USAHA:\n${buildContext()}`,
+          context: buildContext(),
           messages,
         });
 

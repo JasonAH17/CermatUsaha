@@ -29,13 +29,13 @@ export async function askAI(payload) {
 }
 
 // ================= AI sungguhan =================
-async function realAnswer({ system, messages }) {
+async function realAnswer({ context, messages }) {
   let res;
   try {
     res = await fetch('/api/ai', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ system, messages }),
+      body: JSON.stringify({ context, messages }),
     });
   } catch {
     throw new Error('Tidak bisa terhubung. Periksa koneksi internet.');

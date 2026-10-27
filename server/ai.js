@@ -28,6 +28,7 @@ const MIME_OK = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/p
 const TIMEOUT_MS = 30_000;
 const QUICK_TIMEOUT_MS = 10_000; // batas tunggu bila masih ada model cadangan
 const TIMEOUT_FILE_MS = 45_000; // membaca PDF/foto butuh lebih lama
+const QUICK_FILE_MS = 12_000; // sama, untuk PDF/foto: nota biasa terbaca 5-10 dtk, lebih dari itu pindah ke cadangan
 
 // Status yang layak dicoba ulang dengan model cadangan
 const RETRYABLE = new Set([404, 429, 500, 503]);
@@ -176,7 +177,7 @@ async function withModels(models, run, longTimeout = TIMEOUT_MS) {
   for (const [i, model] of order.entries()) {
     try {
       // Masih ada cadangan: jangan menunggu terlalu lama di model yang lambat
-      const quick = longTimeout > TIMEOUT_MS ? 25_000 : QUICK_TIMEOUT_MS;
+      const quick = longTimeout > TIMEOUT_MS ? QUICK_FILE_MS : QUICK_TIMEOUT_MS;
       const timeout = i < order.length - 1 ? quick : longTimeout;
       return { model, ...(await run(model, timeout)) };
     } catch (err) {

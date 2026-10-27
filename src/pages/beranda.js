@@ -1,28 +1,20 @@
-import Chart from 'chart.js/auto';
 import '../styles/beranda.css';
-import '../styles/list.css';
-import { getAll, getProfil, subscribe } from '../data/store.js';
-import * as sel from '../data/selectors.js';
-import { getInsights } from '../data/insights.js';
+import { FITUR } from '../config.js';
+import { getAll, getProfil, subscribe, catatAktivitasAI } from '../data/store.js';
+import { currentUser } from '../data/auth.js';
+import { ringkasanStok, insightStok } from '../data/insights.js';
+import { buildInventoryContext } from '../data/aiContext.js';
 import { buildReport } from '../data/reports.js';
 import { seedDemo } from '../data/seed.js';
+import { getInsight } from '../utils/ai.js';
 import { rupiah, rupiahSingkat, namaBulan, toDateKey } from '../utils/format.js';
 import { countUp } from '../utils/anim.js';
 import { navigate } from '../router.js';
 import { esc } from '../components/fields.js';
 import { toast } from '../components/toast.js';
 import { openForm } from '../components/forms.js';
-import { trxRow, openTrxDetail } from '../components/trx.js';
 import { openTutorial } from '../components/tutorial.js';
-import { openAkunSheet } from './lainnya.js';
-import { askLater } from './ai.js';
-
-Chart.defaults.font.family = "'Plus Jakarta Sans', system-ui, sans-serif";
-
-const C_IN = '#15803d';
-const C_OUT = '#c9372c';
-const TONE = { good: 'in', bad: 'out', warn: 'warn', info: 'info' };
-const AI_CHIPS = ['Usaha saya untung atau rugi?', 'Siapa yang perlu ditagih?'];
+import { askLater } from './chat.js';
 
 function sapaan() {
   const h = new Date().getHours();
@@ -45,159 +37,85 @@ function ringkasanUntung() {
     from: toDateKey(new Date(y, m - 1, 1)),
     to: toDateKey(new Date(y, m - 1, Math.min(d, new Date(y, m, 0).getDate()))),
   });
-
   const pendapatan = ini.summary[0].value;
   const untung = bersih(ini);
   const prev = bersih(lalu);
-  return {
-    untung,
-    pendapatan,
-    biaya: pendapatan - untung,
-    trend: prev > 0 ? Math.round(((untung - prev) / prev) * 100) : null,
-  };
+  return { untung, pendapatan, biaya: pendapatan - untung, trend: prev > 0 ? Math.round(((untung - prev) / prev) * 100) : null };
 }
 
-// Berapa hari kas cukup tanpa pemasukan, dari rata-rata uang keluar 30 hari
-function ketahananKas(saldo) {
-  const from = toDateKey(new Date(Date.now() - 29 * 864e5));
-  const keluar = getAll('transaksi')
-    .filter((t) => t.tanggal >= from && sel.arusKas(t) < 0)
-    .reduce((s, t) => s - sel.arusKas(t), 0);
-  return keluar ? Math.floor(saldo / (keluar / 30)) : null;
-}
+// ===== Insight AI: 1x per hari per akun (hemat kuota), atau saat ditekan "Perbarui" =====
+const kunciInsight = () => `cermatusaha:insight:v1:${currentUser()?.id}`;
+const bacaCache = () => {
+  try { return JSON.parse(localStorage.getItem(kunciInsight())); } catch { return null; }
+};
+const simpanCache = (v) => {
+  try { localStorage.setItem(kunciInsight(), JSON.stringify(v)); } catch { /* abaikan */ }
+};
 
-function insightRow(ins) {
-  const attr = ins.ask ? `data-ask="${esc(ins.ask)}"` : `data-href="${ins.href}"`;
-  return `
-    <button class="row-item attention" ${attr}>
-      <span class="row-icon tone-${TONE[ins.tone]}"><span class="icon">${ins.icon}</span></span>
-      <span class="grow">
-        <strong>${esc(ins.title)}</strong>
-        <small>${esc(ins.text)}</small>
-        <span class="attention-cta">${ins.ask ? '<span class="icon">auto_awesome</span>Tanya AI' : esc(ins.cta || 'Lihat')}</span>
-      </span>
-      <span class="icon chev">chevron_right</span>
-    </button>`;
-}
+const rupiahPendek = (n) => `Rp ${rupiahSingkat(n).replace('.', ',')}`;
 
-function chartConfig(data) {
-  const tick = { color: '#8a928f', font: { size: 11, weight: 600 } };
-  const bar = { borderRadius: 5, borderSkipped: false, barPercentage: 0.75, categoryPercentage: 0.6 };
-  return {
-    type: 'bar',
-    data: {
-      labels: data.map((d) => d.label),
-      datasets: [
-        { label: 'Masuk', data: data.map((d) => d.masuk), backgroundColor: C_IN, ...bar },
-        { label: 'Keluar', data: data.map((d) => d.keluar + d.pembelian), backgroundColor: C_OUT, ...bar },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
-      animation: { duration: 500, easing: 'easeOutQuart' },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: '#18211f',
-          padding: 10,
-          cornerRadius: 10,
-          usePointStyle: true,
-          boxPadding: 4,
-          callbacks: { label: (c) => ` ${c.dataset.label}: ${rupiah(c.parsed.y)}` },
-        },
-      },
-      scales: {
-        x: { grid: { display: false }, border: { display: false }, ticks: { ...tick, maxRotation: 0, autoSkipPadding: 6 } },
-        y: {
-          beginAtZero: true,
-          grid: { color: '#eeeeea' },
-          border: { display: false },
-          ticks: { ...tick, maxTicksLimit: 4, callback: (v) => rupiahSingkat(v) },
-        },
-      },
-    },
-  };
-}
+const kartuUang = () => `
+  <section class="money-card">
+    <div class="money-top">
+      <span data-money-label>Untung bulan ${namaBulan()}</span>
+      <span class="money-trend" data-trend hidden></span>
+    </div>
+    <strong class="num" data-count="untung">Rp 0</strong>
+    <small><span data-count="pendapatan">Rp 0</span> penjualan · <span data-count="biaya">Rp 0</span> modal &amp; biaya</small>
+  </section>`;
 
 export const beranda = {
   render() {
     const nama = getProfil().namaUsaha || 'Usaha Saya';
-
     return `
       <header class="home-header">
-        <a href="#/lainnya" class="biz pressable">
+        <a href="#/pengaturan" class="biz pressable">
           <span class="biz-avatar">${esc(nama[0].toUpperCase())}</span>
           <span class="biz-text"><small>${sapaan()}</small><strong>${esc(nama)}</strong></span>
         </a>
-        <button class="icon-btn pressable" data-help aria-label="Lihat panduan">
-          <span class="icon">help</span>
-        </button>
+        <button class="icon-btn pressable" data-help aria-label="Lihat panduan"><span class="icon">help</span></button>
       </header>
 
       <div class="home stagger">
-        <section class="hero" style="--i:0">
-          <div class="hero-top">
-            <span data-hero-label>Untung bulan ${namaBulan()}</span>
-            <span class="hero-trend" data-trend hidden></span>
+        ${FITUR.ringkasanUang ? `<div style="--i:0">${kartuUang()}</div>` : ''}
+
+        <section class="card insight-card" style="--i:1">
+          <div class="insight-head">
+            <span class="ai-avatar sm"><span class="icon fill">auto_awesome</span></span>
+            <strong>Saran Cermat AI</strong>
+            <button class="icon-btn sm" data-refresh aria-label="Perbarui saran"><span class="icon">refresh</span></button>
           </div>
-          <strong class="hero-value num" data-count="untung">Rp 0</strong>
-          <div class="hero-split">
-            <div><small>Penjualan</small><b class="num" data-count="pendapatan">Rp 0</b></div>
-            <div><small>Modal &amp; biaya</small><b class="num" data-count="biaya">Rp 0</b></div>
+          <div class="insight-body" aria-live="polite"></div>
+          <div class="insight-foot">
+            <small data-insight-meta></small>
+            <button class="btn-link" data-ask-stok><span class="icon">forum</span>Tanya di Chat</button>
           </div>
         </section>
 
-        <div class="quick" style="--i:1">
-          <button class="quick-btn in" data-form="masuk">
-            <span class="icon">south_west</span><span>Uang Masuk</span>
-          </button>
-          <button class="quick-btn out" data-form="keluar">
-            <span class="icon">north_east</span><span>Uang Keluar</span>
-          </button>
+        <div class="section-title" style="--i:2"><h2>Stok barang</h2><a href="#/riwayat/stok">Lihat semua</a></div>
+        <div class="stok-grid" style="--i:3">
+          <a href="#/riwayat/stok" class="stok-tile"><small>Jumlah barang</small><strong class="num" data-stok="jumlah">0</strong></a>
+          <a href="#/riwayat/stok" class="stok-tile"><small>Nilai stok</small><strong class="num" data-stok="nilai">Rp 0</strong></a>
+          <a href="#/riwayat/stok" class="stok-tile warn"><small>Perlu dibeli</small><strong class="num" data-stok="perlu">0</strong></a>
+          <a href="#/riwayat/stok" class="stok-tile out"><small>Habis</small><strong class="num" data-stok="habis">0</strong></a>
+          <a href="#/riwayat/stok" class="stok-tile wide"><span class="icon">star</span><small>Paling laku bulan ini</small><strong data-stok="terlaris">–</strong></a>
         </div>
-
-        <div class="features" style="--i:2">
-          <button class="feature pressable" data-form="scan">
-            <span class="row-icon tone-brand"><span class="icon">document_scanner</span></span>
-            <span><strong>Scan Struk</strong><small>Foto nota, terbaca otomatis</small></span>
-          </button>
-          <a class="feature pressable" href="#/laporan">
-            <span class="row-icon tone-brand"><span class="icon">description</span></span>
-            <span><strong>Laporan</strong><small>Rapi, siap unduh PDF</small></span>
-          </a>
-        </div>
-
-        <section class="ai-card" style="--i:3">
-          <div class="ai-head">
-            <span class="ai-avatar"><span class="icon fill">auto_awesome</span></span>
-            <span><strong>Tanya Cermat AI</strong><small>Konsultan keuangan untuk usaha Anda</small></span>
-          </div>
-          <a href="#/ai" class="ai-input">
-            <span>Tulis pertanyaan soal usaha Anda...</span>
-            <span class="icon">arrow_upward</span>
-          </a>
-          <div class="ai-chips">
-            ${AI_CHIPS.map((q) => `<button class="ai-chip" data-ask="${esc(q)}">${esc(q)}</button>`).join('')}
-          </div>
-        </section>
 
         <section class="card start-card" style="--i:4">
           <h2>Mulai dari sini</h2>
           <p>Tiga langkah untuk mengenal CermatUsaha:</p>
           <div class="start-steps">
-            <button class="row-item" data-form="catat">
-              <span class="step-no">1</span>
-              <span class="grow"><strong>Catat transaksi pertama</strong><small>Jualan hari ini atau belanja stok</small></span>
-              <span class="icon chev">chevron_right</span>
-            </button>
             <button class="row-item" data-form="scan">
-              <span class="step-no">2</span>
-              <span class="grow"><strong>Coba scan struk</strong><small>Pakai contoh struk kalau belum punya</small></span>
+              <span class="step-no">1</span>
+              <span class="grow"><strong>Upload nota belanja</strong><small>Stok barang terisi otomatis</small></span>
               <span class="icon chev">chevron_right</span>
             </button>
-            <a class="row-item" href="#/ai">
+            <button class="row-item" data-form="catat">
+              <span class="step-no">2</span>
+              <span class="grow"><strong>Catat jualan hari ini</strong><small>Lewat tombol + Tambah</small></span>
+              <span class="icon chev">chevron_right</span>
+            </button>
+            <a class="row-item" href="#/chat/baru">
               <span class="step-no">3</span>
               <span class="grow"><strong>Ngobrol dengan Cermat AI</strong><small>Tanya apa saja soal usaha</small></span>
               <span class="icon chev">chevron_right</span>
@@ -205,148 +123,114 @@ export const beranda = {
           </div>
           <button class="btn btn-soft" data-demo><span class="icon">science</span>Isi dengan data contoh</button>
         </section>
-
-        <div class="needs-data section-title" style="--i:4"><h2>Perlu perhatian</h2></div>
-        <div class="needs-data row-card attention-list" style="--i:5"></div>
-
-        <a href="#/pihak" class="needs-data card debt-card pressable" style="--i:6">
-          <div class="debt-head"><h2>Utang piutang</h2><span class="icon chev">chevron_right</span></div>
-          <div class="debt-split">
-            <div><small>Orang berutang ke Anda</small><b class="num amount-in" data-debt="terima">Rp 0</b></div>
-            <div><small>Anda berutang</small><b class="num amount-out" data-debt="bayar">Rp 0</b></div>
-          </div>
-        </a>
-
-        <section class="needs-data card chart-card" style="--i:7">
-          <div class="chart-head">
-            <div>
-              <small>Uang di kas &amp; bank</small>
-              <strong class="num" data-saldo>Rp 0</strong>
-              <span class="chart-sub" data-tahan></span>
-            </div>
-            <button class="btn-link" data-akun>Atur<span class="icon">chevron_right</span></button>
-          </div>
-          <div class="chart-bar">
-            <div class="legend">
-              <span><i style="background:${C_IN}"></i>Masuk</span>
-              <span><i style="background:${C_OUT}"></i>Keluar</span>
-            </div>
-            <div class="seg" style="--n:2">
-              <span class="seg-pill"></span>
-              <button class="active" data-mode="harian">7 hari</button>
-              <button data-mode="bulanan">6 bulan</button>
-            </div>
-          </div>
-          <div class="chart-wrap"><canvas id="arus-chart" aria-label="Grafik uang masuk dan keluar"></canvas></div>
-        </section>
-
-        <div class="needs-data section-title" style="--i:8">
-          <h2>Transaksi terakhir</h2><a href="#/transaksi">Lihat semua</a>
-        </div>
-        <div class="needs-data row-card recent-list" style="--i:9"></div>
       </div>
     `;
   },
 
   mount(view) {
-    let mode = 'harian';
-    let chart;
     const home = view.querySelector('.home');
+    const body = view.querySelector('.insight-body');
+    const meta = view.querySelector('[data-insight-meta]');
+    const refreshBtn = view.querySelector('[data-refresh]');
+    let memuat = false;
 
-    const fill = (animate) => {
+    const fillUang = (animate) => {
+      if (!FITUR.ringkasanUang) return;
       const u = ringkasanUntung();
       const values = { untung: u.untung, pendapatan: u.pendapatan, biaya: u.biaya };
       view.querySelectorAll('[data-count]').forEach((el) => {
         const v = values[el.dataset.count];
-        const fmt = (n) => (n < 0 ? '−' : '') + rupiah(Math.abs(n));
+        const fmt = el.dataset.count === 'untung' ? (n) => (n < 0 ? '−' : '') + rupiah(Math.abs(n)) : rupiahPendek;
         animate ? countUp(el, v, fmt, 700) : (el.textContent = fmt(v));
       });
-      view.querySelector('.hero').classList.toggle('rugi', u.untung < 0);
-      view.querySelector('[data-hero-label]').textContent = `${u.untung < 0 ? 'Rugi' : 'Untung'} bulan ${namaBulan()}`;
-
+      view.querySelector('.money-card').classList.toggle('rugi', u.untung < 0);
+      view.querySelector('[data-money-label]').textContent = `${u.untung < 0 ? 'Rugi' : 'Untung'} bulan ${namaBulan()}`;
       const trend = view.querySelector('[data-trend]');
       trend.hidden = u.trend === null;
       if (u.trend !== null) {
-        trend.innerHTML = `<span class="icon sm">${u.trend >= 0 ? 'trending_up' : 'trending_down'}</span>${Math.abs(u.trend)}% dari bulan lalu`;
+        trend.innerHTML = `<span class="icon sm">${u.trend >= 0 ? 'trending_up' : 'trending_down'}</span>${Math.abs(u.trend)}%`;
       }
-
-      const kosong = !getAll('transaksi').length;
-      home.classList.toggle('is-empty', kosong);
-      if (kosong) return;
-
-      const pu = sel.ringkasanPiutangUtang();
-      view.querySelector('[data-debt="terima"]').textContent = rupiah(pu.terima);
-      view.querySelector('[data-debt="bayar"]').textContent = rupiah(pu.bayar);
-
-      const saldo = sel.totalSaldo();
-      const hari = ketahananKas(saldo);
-      view.querySelector('[data-saldo]').textContent = rupiah(saldo);
-      view.querySelector('[data-tahan]').innerHTML = hari === null ? ''
-        : hari < 14
-          ? `<span class="icon sm">warning</span>Hanya cukup ±${Math.max(hari, 0)} hari pengeluaran`
-          : `<span class="icon sm">verified</span>Cukup untuk ${hari > 365 ? 'lebih dari setahun' : `±${hari} hari`} pengeluaran`;
-      view.querySelector('[data-tahan]').classList.toggle('bad', hari !== null && hari < 14);
-
-      const ins = getInsights().slice(0, 3);
-      view.querySelector('.attention-list').innerHTML = ins.length
-        ? ins.map(insightRow).join('')
-        : '<p class="list-empty">Semua aman. Tidak ada yang perlu diperhatikan 👍</p>';
-
-      const recent = [...getAll('transaksi')]
-        .sort((a, b) => b.tanggal.localeCompare(a.tanggal) || (b.createdAt || '').localeCompare(a.createdAt || ''))
-        .slice(0, 4);
-      view.querySelector('.recent-list').innerHTML = recent.map((t) => trxRow(t)).join('');
-
-      drawChart();
     };
 
-    const drawChart = () => {
-      const data = sel.seriArus(mode);
-      if (!chart) {
-        chart = new Chart(view.querySelector('#arus-chart'), chartConfig(data));
-        return;
+    const fillStok = () => {
+      const r = ringkasanStok();
+      view.querySelector('[data-stok="jumlah"]').textContent = r.jumlah;
+      view.querySelector('[data-stok="nilai"]').textContent = rupiahPendek(r.nilai);
+      view.querySelector('[data-stok="perlu"]').textContent = r.perluBeli.length;
+      view.querySelector('[data-stok="habis"]').textContent = r.habis.length;
+      view.querySelector('[data-stok="terlaris"]').textContent = r.terlaris || 'Belum ada';
+      home.classList.toggle('is-empty', !getAll('transaksi').length && !r.jumlah);
+    };
+
+    const tampilSaran = (saran, info) => {
+      body.innerHTML = saran.length
+        ? `<ul>${saran.map((s) => `<li>${esc(s)}</li>`).join('')}</ul>`
+        : `<p class="insight-empty">Belum ada barang. Upload nota belanja lewat <b>+ Tambah</b>, barangnya masuk ke stok otomatis.</p>
+           <button class="btn btn-soft" data-form="scan"><span class="icon">document_scanner</span>Upload nota</button>`;
+      meta.textContent = info;
+    };
+
+    const muatInsight = async (paksa = false) => {
+      if (memuat) return;
+      if (!getAll('item').length) return tampilSaran([], '');
+
+      const cache = bacaCache();
+      if (!paksa && cache?.tanggal === toDateKey() && cache.saran?.length) {
+        return tampilSaran(cache.saran, `${cache.sumber === 'ai' ? 'Dari Cermat AI' : 'Saran otomatis'} · ${cache.jam}`);
       }
-      chart.data.labels = data.map((d) => d.label);
-      chart.data.datasets[0].data = data.map((d) => d.masuk);
-      chart.data.datasets[1].data = data.map((d) => d.keluar + d.pembelian);
-      chart.update();
+
+      memuat = true;
+      refreshBtn.classList.add('spin');
+      body.innerHTML = '<div class="skeleton"></div><div class="skeleton short"></div>';
+      meta.textContent = 'Cermat AI sedang membaca data stok...';
+      const jam = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      try {
+        const saran = await getInsight(buildInventoryContext());
+        if (!view.isConnected) return;
+        simpanCache({ tanggal: toDateKey(), saran, sumber: 'ai', jam });
+        catatAktivitasAI({ jenis: 'insight', ringkasan: `Memperbarui saran stok: ${saran[0]}` });
+        tampilSaran(saran, `Dari Cermat AI · ${jam}`);
+      } catch (err) {
+        if (!view.isConnected) return;
+        const saran = insightStok();
+        const sebab = err.code === 'NO_KEY' ? 'Cermat AI belum aktif' : 'Cermat AI sedang sibuk';
+        tampilSaran(saran, `Saran otomatis (${sebab}) · ${jam}`);
+        if (paksa) toast(err.message, 'info');
+      } finally {
+        memuat = false;
+        refreshBtn.classList.remove('spin');
+      }
     };
 
     view.addEventListener('click', (e) => {
-      const el = e.target.closest('[data-form],[data-mode],[data-ask],[data-href],[data-trx],[data-help],[data-demo],[data-akun]');
+      const el = e.target.closest('[data-form],[data-help],[data-demo],[data-refresh],[data-ask-stok]');
       if (!el) return;
-
       if (el.dataset.form) openForm(el.dataset.form);
-      if (el.dataset.href) navigate(el.dataset.href.replace(/^#/, ''));
-      if (el.dataset.trx) openTrxDetail(el.dataset.trx);
       if (el.hasAttribute('data-help')) openTutorial();
-      if (el.hasAttribute('data-akun')) openAkunSheet();
-
+      if (el.hasAttribute('data-refresh')) muatInsight(true);
+      if (el.hasAttribute('data-ask-stok')) {
+        askLater('Dari data stok saya, barang apa yang perlu dibeli dan mana yang paling menguntungkan?');
+        navigate('/chat');
+      }
       if (el.hasAttribute('data-demo')) {
         seedDemo();
         toast('Data contoh dimuat', 'check_circle');
       }
-
-      if (el.dataset.ask) {
-        askLater(el.dataset.ask);
-        navigate('/ai');
-      }
-
-      if (el.dataset.mode) {
-        mode = el.dataset.mode;
-        view.querySelector('.seg-pill').style.transform = `translateX(${mode === 'harian' ? 0 : 100}%)`;
-        view.querySelectorAll('[data-mode]').forEach((b) => b.classList.toggle('active', b === el));
-        drawChart();
-      }
     });
 
-    fill(true);
+    fillUang(true);
+    fillStok();
+    muatInsight();
 
-    const unsubscribe = subscribe(() => {
+    let jumlahBarang = getAll('item').length;
+    return subscribe(() => {
       view.querySelector('.biz-text strong').textContent = getProfil().namaUsaha;
       view.querySelector('.biz-avatar').textContent = (getProfil().namaUsaha || 'U')[0].toUpperCase();
-      fill(false);
+      fillUang(false);
+      fillStok();
+      // Barang pertama baru masuk (misalnya dari nota): tampilkan saran tanpa menunggu besok
+      if (!jumlahBarang && getAll('item').length) muatInsight();
+      jumlahBarang = getAll('item').length;
     });
-    return () => { unsubscribe(); chart?.destroy(); };
   },
 };

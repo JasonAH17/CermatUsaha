@@ -1,5 +1,5 @@
-import { getAll, getById, getProfil } from './store.js';
-import { saldoAkun, totalSaldo, stokItem, seriArus } from './selectors.js';
+import { getAll, getProfil } from './store.js';
+import { totalSaldo, stokItem, seriArus } from './selectors.js';
 import { buildReport, formatValue } from './reports.js';
 import { tanggal, toDateKey } from '../utils/format.js';
 
@@ -10,11 +10,42 @@ const rp = (v) => formatValue(v, 'money');
 
 const JENIS = {
   penjualan: 'Penjualan',
-  pembelian: 'Pembelian',
+  pembelian: 'Belanja stok',
   uang_masuk: 'Uang masuk',
   uang_keluar: 'Uang keluar',
-  pengeluaran: 'Pengeluaran',
+  pengeluaran: 'Biaya usaha',
 };
+
+const hariLalu = (n) => toDateKey(new Date(Date.now() - n * 864e5));
+
+// Keluar-masuk tiap barang dalam N hari terakhir
+function gerakStok(sejak) {
+  const map = new Map(); // itemId -> { masuk, keluar }
+  getAll('transaksi')
+    .filter((t) => t.tanggal >= sejak && ['pembelian', 'penjualan'].includes(t.jenis))
+    .forEach((t) => (t.items || []).forEach((li) => {
+      if (!li.itemId) return;
+      const g = map.get(li.itemId) || { masuk: 0, keluar: 0 };
+      if (t.jenis === 'pembelian') g.masuk += li.qty;
+      else g.keluar += li.qty;
+      map.set(li.itemId, g);
+    }));
+  return map;
+}
+
+function barisStok(L, sejak) {
+  const items = getAll('item');
+  if (!items.length) {
+    L.push('- Belum ada barang');
+    return;
+  }
+  const gerak = gerakStok(sejak);
+  items.slice(0, 40).forEach((it) => {
+    const g = gerak.get(it.id) || { masuk: 0, keluar: 0 };
+    L.push(`- ${it.nama}: sisa ${stokItem(it.id)} ${it.satuan} (ingatkan bila ≤ ${it.stokMin || 0}), `
+      + `30 hari: masuk ${g.masuk}, terjual ${g.keluar}; modal ${rp(it.hargaBeli)}, jual ${it.hargaJual ? rp(it.hargaJual) : 'belum diisi'}`);
+  });
+}
 
 export function buildContext() {
   const p = getProfil();
@@ -29,10 +60,7 @@ export function buildContext() {
   const L = [];
   L.push(`Nama usaha: ${p.namaUsaha}`);
   L.push(`Tanggal hari ini: ${tanggal(today)}`);
-
-  L.push('', '## Saldo kas & bank');
-  getAll('akun').forEach((a) => L.push(`- ${a.nama}: ${rp(saldoAkun(a.id))}`));
-  L.push(`- Total: ${rp(totalSaldo())}`);
+  L.push(`Uang di kas sekarang: ${rp(totalSaldo())}`);
 
   const labaRugi = (judul, from, to) => {
     const r = buildReport('labarugi', { from, to });
@@ -43,50 +71,39 @@ export function buildContext() {
   labaRugi('Laba rugi bulan lalu', startPrev, endPrev);
 
   const pj = buildReport('penjualan', { from: startThis, to: today });
-  L.push('', '## Penjualan per item bulan ini');
+  L.push('', '## Penjualan per barang bulan ini');
   if (pj.rows.length) {
     pj.rows.slice(0, 10).forEach((r) => L.push(`- ${r.nama}: terjual ${r.qty}, omzet ${rp(r.omzet)}, laba ${rp(r.laba)}`));
   } else {
-    L.push('- Belum ada penjualan item bulan ini');
+    L.push('- Belum ada penjualan per barang bulan ini');
   }
 
   L.push('', '## Arus kas 7 hari terakhir');
   seriArus('harian').forEach((d) =>
-    L.push(`- ${d.label}: masuk ${rp(d.masuk)}, keluar ${rp(d.keluar)}, pembelian ${rp(d.pembelian)}, saldo ${rp(d.saldo)}`));
+    L.push(`- ${d.label}: masuk ${rp(d.masuk)}, keluar ${rp(d.keluar)}, belanja stok ${rp(d.pembelian)}, saldo ${rp(d.saldo)}`));
 
   L.push('', '## Arus kas 6 bulan terakhir');
   seriArus('bulanan').forEach((d) =>
-    L.push(`- ${d.label}: masuk ${rp(d.masuk)}, keluar ${rp(d.keluar)}, pembelian ${rp(d.pembelian)}, saldo akhir ${rp(d.saldo)}`));
+    L.push(`- ${d.label}: masuk ${rp(d.masuk)}, keluar ${rp(d.keluar)}, belanja stok ${rp(d.pembelian)}, saldo akhir ${rp(d.saldo)}`));
 
-  const up = buildReport('utangpiutang', { to: today });
-  L.push('', '## Utang piutang per pihak');
-  const pihakRows = up.rows.filter((r) => r._style !== 'total');
-  if (pihakRows.length) {
-    pihakRows.slice(0, 10).forEach((r) =>
-      L.push(`- ${r.nama} (${r.jenis}): ${r.piutang ? `piutang ${rp(r.piutang)}` : `utang ${rp(r.utang)}`}`));
-  } else {
-    L.push('- Tidak ada utang piutang');
-  }
-
-  L.push('', '## Stok item');
-  const items = getAll('item');
-  if (items.length) {
-    items.slice(0, 30).forEach((it) =>
-      L.push(`- ${it.nama}: stok ${stokItem(it.id)} ${it.satuan} (batas menipis ${it.stokMin || 0}), beli ${rp(it.hargaBeli)}, jual ${rp(it.hargaJual)}`));
-  } else {
-    L.push('- Belum ada item');
-  }
+  L.push('', '## Stok barang dan alurnya 30 hari terakhir');
+  barisStok(L, hariLalu(29));
 
   L.push('', '## 15 transaksi terbaru');
   [...getAll('transaksi')]
     .sort((a, b) => b.tanggal.localeCompare(a.tanggal) || (b.createdAt || '').localeCompare(a.createdAt || ''))
     .slice(0, 15)
     .forEach((t) => {
-      const pihak = t.pihakId ? getById('pihak', t.pihakId)?.nama : '';
-      const ket = t.jenis === 'pengeluaran' ? t.kategori : pihak;
-      const belum = t.total - (t.dibayar ?? t.total);
-      L.push(`- ${tanggal(t.tanggal)} | ${JENIS[t.jenis]}${ket ? ` | ${ket}` : ''} | ${rp(t.total)}${belum > 0 ? ` | belum dibayar ${rp(belum)}` : ''}`);
+      const ket = t.jenis === 'pengeluaran' ? t.kategori : t.toko || t.catatan;
+      L.push(`- ${tanggal(t.tanggal)} | ${JENIS[t.jenis]}${ket && ket !== 'POS' ? ` | ${ket}` : ''} | ${rp(t.total)}`);
     });
 
+  return L.join('\n');
+}
+
+// Ringkasan khusus inventaris untuk insight di Beranda
+export function buildInventoryContext() {
+  const L = [`Nama usaha: ${getProfil().namaUsaha}`, `Tanggal hari ini: ${tanggal(toDateKey())}`, '', '## Barang'];
+  barisStok(L, hariLalu(29));
   return L.join('\n');
 }

@@ -50,26 +50,7 @@
 .detail-rows dt { color: var(--muted); }
 .detail-rows dd { font-weight: 600; text-align: right; }
 
-/* ===== Detail kontak ===== */
-.balance-card {
-  padding: 18px; border-radius: var(--radius-lg);
-  background: var(--cs, var(--surface-2)); color: var(--c, var(--text));
-}
-.balance-card small { font-size: 14px; font-weight: 700; }
-.balance-card strong { display: block; margin-top: 2px; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.balance-card p { margin-top: 4px; font-size: 14px; color: var(--text-2); }
-
-.action-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.action {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  padding: 12px 4px; border-radius: var(--radius);
-  background: var(--surface); border: 1px solid var(--line);
-  font-size: 12.5px; font-weight: 600;
-}
-.action .icon { color: var(--brand); }
-.action:disabled { opacity: 0.4; }
-
-.pihak-page, .report-page { padding-bottom: 80px; }
+.report-page { padding-bottom: 80px; }
 .sticky-actions {
   position: fixed; left: 50%; transform: translateX(-50%);
   bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));

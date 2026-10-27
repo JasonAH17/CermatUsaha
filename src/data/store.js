@@ -6,6 +6,10 @@
   item      : { id, nama, satuan, hargaBeli, hargaJual, stokAwal, stokMin }
   transaksi : { id, jenis, tanggal 'YYYY-MM-DD', akunId, pihakId?, items?, kategori?, total, dibayar?, jatuhTempo?, catatan? }
   catatan   : { id, judul, isi, pengingat? }
+  percakapan: { id, judul, pesan: [{ role, content, lampiran?: { nama, jenis } }], dibuat, diubah }
+  aktivitasAI: { id, jenis: 'nota'|'insight', ringkasan, transaksiId?, waktu }
+
+  Data lama (pihak, akun selain Kas, catatan) tetap disimpan walau tidak lagi ditampilkan.
 */
 
 // Setiap akun punya data sendiri: cermatusaha:db:v1:<userId>
@@ -24,6 +28,8 @@ const DEFAULT = () => ({
   item: [],
   transaksi: [],
   catatan: [],
+  percakapan: [],
+  aktivitasAI: [],
 });
 
 const merge = (data = {}) => {
@@ -109,6 +115,16 @@ export function restore(col, row) {
   if (!row || getById(col, row.id)) return;
   db[col] = [...db[col], row];
   save();
+}
+
+// ===== Kegiatan AI (tampil di Riwayat > AI) =====
+const MAX_AKTIVITAS = 200;
+
+export function catatAktivitasAI(data) {
+  const row = { id: uid('ai'), waktu: new Date().toISOString(), ...data };
+  db.aktivitasAI = [...db.aktivitasAI, row].slice(-MAX_AKTIVITAS);
+  save();
+  return row;
 }
 
 // ===== Profil usaha =====

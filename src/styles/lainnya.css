@@ -13,17 +13,6 @@
 .profile-card small { font-size: 13px; color: var(--muted); }
 .profile-card > .icon { font-size: 20px; color: var(--muted); }
 
-/* Fitur utama */
-.menu-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.menu-tile {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-  padding: 14px; border-radius: var(--radius); text-align: left;
-  background: var(--surface); border: 1px solid var(--line);
-}
-.menu-tile .row-icon { margin-bottom: 6px; }
-.menu-tile strong { font-size: 15.5px; }
-.menu-tile small { font-size: 13px; color: var(--muted); }
-
 .menu-group { display: flex; flex-direction: column; gap: 8px; }
 .menu-group h3 { padding: 8px 4px 0; font-size: 14px; font-weight: 700; color: var(--muted); }
 

@@ -12,9 +12,10 @@
     "vite": "^5.4.2"
   },
   "dependencies": {
-    "chart.js": "^4.5.1",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
-    "tesseract.js": "^5.1.1"
+    "mammoth": "^1.13.0",
+    "tesseract.js": "^5.1.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }

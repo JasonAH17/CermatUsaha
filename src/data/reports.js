@@ -5,7 +5,6 @@ import { tanggal } from '../utils/format.js';
 export const REPORTS = {
   bukukas: { label: 'Buku Kas', desc: 'Semua uang masuk & keluar', icon: 'account_balance_wallet', color: '#10b981' },
   labarugi: { label: 'Laba Rugi', desc: 'Usaha untung atau rugi', icon: 'trending_up', color: '#3b82f6' },
-  utangpiutang: { label: 'Utang Piutang', desc: 'Siapa berutang ke siapa', icon: 'handshake', color: '#f59e0b' },
   penjualan: { label: 'Penjualan per Barang', desc: 'Barang paling laku & untungnya', icon: 'sell', color: '#0ea5e9' },
 };
 
@@ -21,17 +20,14 @@ const sum = (arr, fn) => arr.reduce((s, x) => s + fn(x), 0);
 const inRange = (t, from, to) => t.tanggal >= from && t.tanggal <= to;
 const byDate = (a, b) => a.tanggal.localeCompare(b.tanggal) || (a.createdAt || '').localeCompare(b.createdAt || '');
 
-function efekPihak(t) {
-  const sisa = t.total - (t.dibayar ?? t.total);
-  return { penjualan: sisa, pembelian: -sisa, uang_masuk: -t.total, uang_keluar: t.total }[t.jenis] ?? 0;
-}
-
-function uraian(t, withPihak = true) {
-  const p = withPihak && t.pihakId && getById('pihak', t.pihakId);
+// Nama kontak hanya ada di transaksi lama (sebelum fitur utang piutang dihapus)
+function uraian(t) {
+  const p = t.pihakId && getById('pihak', t.pihakId);
+  const nama = t.toko || p?.nama;
   const base = t.jenis === 'pengeluaran'
     ? `Pengeluaran - ${t.kategori || 'Lainnya'}`
-    : `${JENIS_LABEL[t.jenis]}${p ? ` - ${p.nama}` : ''}`;
-  return t.catatan && t.catatan !== 'POS' ? `${base} (${t.catatan})` : base;
+    : `${JENIS_LABEL[t.jenis]}${nama ? ` - ${nama}` : ''}`;
+  return t.catatan && t.catatan !== 'POS' && !t.catatan.startsWith('Nota ') ? `${base} (${t.catatan})` : base;
 }
 
 // Format nilai untuk layar & PDF (hanya karakter aman untuk PDF)
@@ -62,7 +58,6 @@ function bukuKas(from, to) {
       return {
         tanggal: t.tanggal,
         uraian: uraian(t),
-        akun: getById('akun', t.akunId)?.nama || '-',
         masuk: v > 0 ? v : null,
         keluar: v < 0 ? -v : null,
         saldo,
@@ -79,7 +74,6 @@ function bukuKas(from, to) {
     columns: [
       { key: 'tanggal', header: 'Tanggal', type: 'date', width: 24 },
       { key: 'uraian', header: 'Uraian' },
-      { key: 'akun', header: 'Akun', width: 18 },
       { key: 'masuk', header: 'Masuk', type: 'money', align: 'right', width: 27 },
       { key: 'keluar', header: 'Keluar', type: 'money', align: 'right', width: 27 },
       { key: 'saldo', header: 'Saldo', type: 'money', align: 'right', width: 29 },
@@ -131,47 +125,6 @@ function labaRugi(from, to) {
   };
 }
 
-// ===== Utang Piutang =====
-function utangPiutang(to) {
-  const trx = getAll('transaksi').filter((t) => t.tanggal <= to);
-
-  const rows = getAll('pihak')
-    .map((p) => {
-      const s = (p.saldoAwal || 0) + sum(trx.filter((t) => t.pihakId === p.id), efekPihak);
-      return {
-        nama: p.nama,
-        jenis: p.jenis === 'pemasok' ? 'Pemasok' : 'Pelanggan',
-        telepon: p.telepon ? `+${p.telepon}` : '-',
-        piutang: s > 0 ? s : null,
-        utang: s < 0 ? -s : null,
-        s,
-      };
-    })
-    .filter((r) => r.s !== 0)
-    .sort((a, b) => Math.abs(b.s) - Math.abs(a.s));
-
-  const piutang = sum(rows, (r) => r.piutang || 0);
-  const utang = sum(rows, (r) => r.utang || 0);
-  if (rows.length) rows.push({ nama: 'TOTAL', piutang, utang, _style: 'total' });
-
-  return {
-    period: `Per ${tanggal(to)}`,
-    summary: [
-      { label: 'Total piutang', value: piutang, tone: 'in' },
-      { label: 'Total utang', value: utang, tone: 'out' },
-      { label: 'Selisih', value: piutang - utang, tone: 'strong' },
-    ],
-    columns: [
-      { key: 'nama', header: 'Nama' },
-      { key: 'jenis', header: 'Jenis', width: 24 },
-      { key: 'telepon', header: 'Telepon', width: 34 },
-      { key: 'piutang', header: 'Piutang', type: 'money', align: 'right', width: 30 },
-      { key: 'utang', header: 'Utang', type: 'money', align: 'right', width: 30 },
-    ],
-    rows,
-  };
-}
-
 // ===== Penjualan per Item =====
 function penjualanItem(from, to) {
   const map = new Map();
@@ -213,48 +166,12 @@ function penjualanItem(from, to) {
   };
 }
 
-// ===== Laporan per Pihak =====
-function laporanPihak(id, from, to) {
-  const p = getById('pihak', id);
-  const all = getAll('transaksi').filter((t) => t.pihakId === id).sort(byDate);
-
-  let saldo = (p.saldoAwal || 0) + sum(all.filter((t) => t.tanggal < from), efekPihak);
-  const awal = saldo;
-
-  const rows = all.filter((t) => inRange(t, from, to)).map((t) => {
-    saldo += efekPihak(t);
-    return { tanggal: t.tanggal, uraian: uraian(t, false), total: t.total, saldo };
-  });
-
-  const status = (v) => (v > 0 ? 'Piutang' : v < 0 ? 'Utang' : 'Saldo');
-
-  return {
-    title: `Laporan ${p.nama}`,
-    subtitle: `${p.jenis === 'pemasok' ? 'Pemasok' : 'Pelanggan'}${p.telepon ? ` | +${p.telepon}` : ''}`,
-    summary: [
-      { label: `${status(awal)} awal`, value: Math.abs(awal) },
-      { label: 'Jumlah transaksi', value: rows.length, type: 'number' },
-      { label: `${status(saldo)} akhir`, value: Math.abs(saldo), tone: 'strong' },
-    ],
-    columns: [
-      { key: 'tanggal', header: 'Tanggal', type: 'date', width: 26 },
-      { key: 'uraian', header: 'Uraian' },
-      { key: 'total', header: 'Nominal', type: 'money', align: 'right', width: 34 },
-      { key: 'saldo', header: 'Saldo', type: 'money', align: 'right', width: 34 },
-    ],
-    rows,
-    note: 'Saldo positif = piutang (pihak berutang kepada Anda), saldo negatif = utang Anda.',
-  };
-}
-
 // ===== Pembangun laporan =====
-export function buildReport(type, { from, to, id }) {
+export function buildReport(type, { from, to }) {
   const builders = {
     bukukas: () => bukuKas(from, to),
     labarugi: () => labaRugi(from, to),
-    utangpiutang: () => utangPiutang(to),
     penjualan: () => penjualanItem(from, to),
-    pihak: () => laporanPihak(id, from, to),
   };
 
   const data = builders[type]();

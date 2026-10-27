@@ -16,9 +16,6 @@ export const JENIS = {
 
 export const isMasuk = (t) => ['penjualan', 'uang_masuk'].includes(t.jenis);
 
-export const sisaTagihan = (t) =>
-  ['penjualan', 'pembelian'].includes(t.jenis) ? t.total - (t.dibayar ?? t.total) : 0;
-
 export const waLink = (phone, text) => `https://wa.me/${phone || ''}?text=${encodeURIComponent(text)}`;
 
 export function trxTitle(t) {
@@ -34,13 +31,11 @@ export function trxTitle(t) {
 function trxSub(t) {
   const parts = [JENIS[t.jenis].label];
   if (t.items?.length) parts.push(`${t.items.reduce((s, i) => s + i.qty, 0)} barang`);
-  parts.push(getById('akun', t.akunId)?.nama || '');
   return parts.filter(Boolean).join(' · ');
 }
 
 export function trxRow(t, extra = '') {
   const j = JENIS[t.jenis];
-  const sisa = sisaTagihan(t);
   const masuk = isMasuk(t);
   return `
     <button class="row-item" data-trx="${t.id}">
@@ -51,7 +46,6 @@ export function trxRow(t, extra = '') {
       </span>
       <span class="row-amount">
         <strong class="${masuk ? 'amount-in' : 'amount-out'}">${masuk ? '+' : '−'}${rupiah(t.total)}</strong>
-        ${sisa > 0 ? `<span class="tag warn">Belum lunas ${rupiah(sisa)}</span>` : ''}
         ${extra}
       </span>
     </button>`;
@@ -62,8 +56,6 @@ function struk(t) {
   const lines = [`*${usaha}*`, `${JENIS[t.jenis].label} · ${tanggal(t.tanggal)}`, ''];
   t.items?.forEach((li) => lines.push(`${li.nama} x${li.qty} = ${rupiah(li.qty * li.harga)}`));
   lines.push(`*Total: ${rupiah(t.total)}*`);
-  const sisa = sisaTagihan(t);
-  if (sisa > 0) lines.push(`Sisa tagihan: ${rupiah(sisa)}`);
   if (t.catatan && t.catatan !== 'POS') lines.push(`Catatan: ${t.catatan}`);
   lines.push('', 'Terima kasih 🙏');
   return lines.join('\n');
@@ -75,16 +67,11 @@ export function openTrxDetail(id) {
 
   const j = JENIS[t.jenis];
   const pihak = t.pihakId && getById('pihak', t.pihakId);
-  const sisa = sisaTagihan(t);
-  const berfaktur = ['penjualan', 'pembelian'].includes(t.jenis);
 
   const rows = [
     ['Tanggal', tanggal(t.tanggal)],
-    pihak && [pihak.jenis === 'pemasok' ? 'Supplier' : 'Pelanggan', esc(pihak.nama)],
-    ['Lewat', esc(getById('akun', t.akunId)?.nama || '-')],
+    t.toko && ['Toko', esc(t.toko)],
     t.kategori && ['Untuk', esc(t.kategori)],
-    berfaktur && ['Status', sisa > 0 ? `<span class="tag warn">Belum lunas ${rupiah(sisa)}</span>` : '<span class="tag ok">Lunas</span>'],
-    sisa > 0 && t.jatuhTempo && ['Jatuh tempo', tanggal(t.jatuhTempo)],
     t.catatan && t.catatan !== 'POS' && ['Catatan', esc(t.catatan)],
     t.struk && ['Sumber', '<span class="tag brand">Dari scan struk</span>'],
   ].filter(Boolean);

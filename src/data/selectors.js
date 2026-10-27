@@ -14,37 +14,9 @@ const ARUS = {
 };
 export const arusKas = (t) => ARUS[t.jenis]?.(t) ?? 0;
 
-// Aturan 2: efek transaksi ke saldo pihak (+ piutang, - utang)
-const EFEK_PIHAK = {
-  penjualan: (t) => t.total - paid(t),
-  pembelian: (t) => -(t.total - paid(t)),
-  uang_masuk: (t) => -t.total,
-  uang_keluar: (t) => t.total,
-};
-
-// ===== Kas & Bank =====
-export function saldoAkun(akunId) {
-  const akun = getAll('akun').find((a) => a.id === akunId);
-  const trx = getAll('transaksi').filter((t) => t.akunId === akunId);
-  return (akun?.saldoAwal || 0) + sum(trx, arusKas);
-}
-
-export const totalSaldo = () => sum(getAll('akun'), (a) => saldoAkun(a.id));
-
-// ===== Pihak =====
-export function saldoPihak(pihakId) {
-  const pihak = getAll('pihak').find((p) => p.id === pihakId);
-  const trx = getAll('transaksi').filter((t) => t.pihakId === pihakId);
-  return (pihak?.saldoAwal || 0) + sum(trx, (t) => EFEK_PIHAK[t.jenis]?.(t) ?? 0);
-}
-
-export function ringkasanPiutangUtang() {
-  const saldo = getAll('pihak').map((p) => saldoPihak(p.id));
-  return {
-    terima: sum(saldo.filter((s) => s > 0), (s) => s),
-    bayar: sum(saldo.filter((s) => s < 0), (s) => -s),
-  };
-}
+// ===== Uang di kas (semua rekening lama ikut dijumlah) =====
+export const totalSaldo = () =>
+  sum(getAll('akun'), (a) => a.saldoAwal || 0) + sum(getAll('transaksi'), arusKas);
 
 // ===== Ringkasan bulanan =====
 export function ringkasanBulan(date = new Date()) {
@@ -70,6 +42,26 @@ export function stokItem(itemId) {
     });
   });
   return stok;
+}
+
+// Alur satu barang: stok awal, lalu setiap belanja (+) dan jualan (-) dengan sisa berjalan
+export function alurBarang(itemId) {
+  const item = getAll('item').find((i) => i.id === itemId);
+  const gerak = [];
+  getAll('transaksi').forEach((t) => {
+    if (!['pembelian', 'penjualan'].includes(t.jenis)) return;
+    (t.items || []).forEach((li) => {
+      if (li.itemId !== itemId) return;
+      gerak.push({ trxId: t.id, tanggal: t.tanggal, jenis: t.jenis, qty: t.jenis === 'pembelian' ? li.qty : -li.qty, createdAt: t.createdAt || '' });
+    });
+  });
+  gerak.sort((a, b) => a.tanggal.localeCompare(b.tanggal) || a.createdAt.localeCompare(b.createdAt));
+
+  let sisa = item?.stokAwal || 0;
+  return {
+    stokAwal: sisa,
+    gerak: gerak.map((g) => ({ ...g, sisa: (sisa += g.qty) })),
+  };
 }
 
 // ===== Grafik arus kas =====

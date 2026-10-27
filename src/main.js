@@ -7,12 +7,10 @@ import { closeAllSheets } from './components/sheet.js';
 import { maybeShowTutorial } from './components/tutorial.js';
 import { masuk, daftar } from './pages/auth.js';
 import { beranda } from './pages/beranda.js';
-import { transaksi } from './pages/transaksi.js';
-import { pihakList, pihakDetail } from './pages/pihak.js';
-import { inventaris } from './pages/inventaris.js';
-import { lainnya } from './pages/lainnya.js';
+import { riwayat } from './pages/riwayat.js';
+import { chat } from './pages/chat.js';
+import { pengaturan } from './pages/pengaturan.js';
 import { laporan } from './pages/laporan.js';
-import { ai } from './pages/ai.js';
 import { currentUser, resumeSession } from './data/auth.js';
 import * as store from './data/store.js';
 import * as sel from './data/selectors.js';
@@ -20,21 +18,20 @@ import { seedDemo } from './data/seed.js';
 
 if (import.meta.env.DEV) window.ku = { store, sel, seedDemo };
 
+// Lima halaman utama: Beranda · Riwayat · + Tambah · Chat · Pengaturan
 const NAV = [
   { path: '/beranda', label: 'Beranda', icon: 'home', page: beranda },
-  { path: '/transaksi', label: 'Riwayat', icon: 'receipt_long', page: transaksi },
-  { action: 'catat', label: 'Catat', icon: 'add' },
-  { path: '/ai', label: 'Tanya AI', icon: 'forum', page: ai },
-  { path: '/lainnya', label: 'Menu', icon: 'menu', page: lainnya, also: ['/pihak', '/inventaris', '/laporan'] },
+  { path: '/riwayat', label: 'Riwayat', icon: 'receipt_long', page: riwayat },
+  { action: 'catat', label: 'Tambah', icon: 'add' },
+  { path: '/chat', label: 'Chat', icon: 'forum', page: chat },
+  { path: '/pengaturan', label: 'Pengaturan', icon: 'settings', page: pengaturan, also: ['/laporan'] },
 ];
 
 // '/beranda' didaftarkan pertama supaya jadi halaman cadangan bila alamat tidak dikenal
 NAV.filter((n) => n.page).forEach((n) => route(n.path, n.page));
-route('/pihak', pihakList);
-route('/pihak/:id', pihakDetail);
-route('/inventaris', inventaris);
+route('/riwayat/:tab', riwayat);
+route('/chat/:id', chat);
 route('/laporan', laporan);
-route('/laporan/pihak/:id', laporan);
 route('/masuk', masuk);
 route('/daftar', daftar);
 
@@ -55,7 +52,7 @@ document.querySelector('#app').innerHTML = `
   </div>
 `;
 
-// Aksi global: tombol kembali & tombol Catat di navigasi
+// Aksi global: tombol kembali & tombol Tambah di navigasi
 document.addEventListener('click', (e) => {
   const back = e.target.closest('[data-back]');
   if (back) return goBack(back.dataset.back);

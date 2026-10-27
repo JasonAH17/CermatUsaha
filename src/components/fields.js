@@ -1,4 +1,3 @@
-import { getAll } from '../data/store.js';
 import { toDateKey, tanggal } from '../utils/format.js';
 import { terbilang } from '../utils/terbilang.js';
 
@@ -64,9 +63,6 @@ export const optionsField = (name, label, options, value) => `
     <input type="hidden" name="${name}" value="${value ?? ''}">
   </div>`;
 
-export const akunField = (label = 'Uangnya lewat') =>
-  optionsField('akunId', label, getAll('akun').map((a) => ({ value: a.id, label: a.nama })), 'kas');
-
 // Kolom yang jarang diubah dilipat di sini supaya form tetap ringkas
 export const moreFields = (inner, { title = 'Detail lainnya', sub = '' } = {}) => `
   <details class="more">
@@ -77,18 +73,6 @@ export const moreFields = (inner, { title = 'Detail lainnya', sub = '' } = {}) =
     </summary>
     <div class="form">${inner}</div>
   </details>`;
-
-export const pihakField = (label = 'Kontak', optional = true) => `
-  <div class="field">
-    <span class="field-label">${label} ${optional ? '<em>(boleh dikosongkan)</em>' : ''}</span>
-    <button type="button" class="picker pressable" data-pihak-picker>
-      <span class="avatar"><span class="icon">person</span></span>
-      <span class="picker-text"><strong>Pilih nama</strong><small>Pelanggan atau supplier</small></span>
-      <span class="icon">chevron_right</span>
-    </button>
-    <input type="hidden" name="pihakId">
-    <div class="hint" hidden></div>
-  </div>`;
 
 export const submitButton = (label = 'Simpan') => `
   <div class="sheet-footer">
@@ -144,7 +128,6 @@ function updateMoreSummary(form) {
   const f = form.elements;
   const parts = [];
   if (f.tanggal) parts.push(f.tanggal.value === toDateKey() ? 'Hari ini' : tanggal(f.tanggal.value));
-  if (f.akunId) parts.push(getAll('akun').find((a) => a.id === f.akunId.value)?.nama);
   if (f.catatan?.value.trim()) parts.push('ada catatan');
   el.textContent = parts.filter(Boolean).join(' · ') || 'Tanggal, catatan';
 }

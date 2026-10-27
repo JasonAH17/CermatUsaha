@@ -2,14 +2,13 @@ import '../styles/form.css';
 import '../styles/item.css';
 import { openSheet } from './sheet.js';
 import { toast } from './toast.js';
-import { setupPihakPicker } from './forms.js';
 import { add, update, getAll, getById } from '../data/store.js';
 import { removeWithUndo } from './safety.js';
 import { stokItem } from '../data/selectors.js';
-import { rupiah, rupiahSingkat, toDateKey } from '../utils/format.js';
+import { rupiah } from '../utils/format.js';
 import {
   esc, parseMoney, setMoney, invalid, bindFields,
-  moneyField, numberField, textField, dateField, optionsField, akunField, pihakField, moreFields, submitButton,
+  moneyField, numberField, textField, dateField, optionsField, moreFields, submitButton,
 } from './fields.js';
 
 const SATUAN = ['pcs', 'kg', 'pack', 'botol', 'kotak', 'porsi'];
@@ -187,8 +186,8 @@ export function openItemPicker({ jenis, onPick }) {
 
 // ===== Faktur Penjualan / Pembelian =====
 const FAKTUR = {
-  penjualan: { title: 'Jualan per Barang', pihakLabel: 'Pelanggan', pihakJenis: 'pelanggan', harga: 'hargaJual', sisa: 'piutang' },
-  pembelian: { title: 'Belanja per Barang', pihakLabel: 'Supplier', pihakJenis: 'pemasok', harga: 'hargaBeli', sisa: 'utang' },
+  penjualan: { title: 'Jualan per Barang', harga: 'hargaJual' },
+  pembelian: { title: 'Belanja per Barang', harga: 'hargaBeli' },
 };
 
 export function openFakturForm(jenis) {
@@ -207,29 +206,16 @@ export function openFakturForm(jenis) {
           </button>
         </div>
         <div class="total-box"><span>Total</span><strong data-total>Rp 0</strong></div>
-        ${optionsField('status', 'Sudah dibayar?', [
-          { value: 'lunas', label: 'Lunas' },
-          { value: 'sebagian', label: 'Sebagian' },
-          { value: 'belum', label: 'Belum dibayar' },
-        ], 'lunas')}
-        ${pihakField(cfg.pihakLabel)}
-        <div class="bayar-extra form" hidden>
-          <div data-dibayar-wrap>${moneyField('dibayar', 'Yang sudah dibayar', true)}</div>
-          ${dateField('jatuhTempo', 'Janji bayar tanggal', toDateKey(new Date(Date.now() + 7 * 864e5)), { min: toDateKey() })}
-        </div>
-        ${moreFields(`${akunField()}${dateField()}${textField('catatan', 'Catatan', { textarea: true })}`)}
+        ${moreFields(`${dateField()}${textField('catatan', 'Catatan', { textarea: true })}`)}
         ${submitButton('Simpan')}
       </form>`,
     onMount(body, close) {
       const form = body.querySelector('form');
       const f = form.elements;
       const linesEl = form.querySelector('.lines');
-      const extra = form.querySelector('.bayar-extra');
-      const dibayarWrap = form.querySelector('[data-dibayar-wrap]');
       const addBtn = form.querySelector('[data-add-line]');
 
       bindFields(form);
-      setupPihakPicker(form, cfg.pihakJenis, jenis);
 
       const total = () => lines.reduce((s, l) => s + l.qty * l.harga, 0);
 
@@ -297,36 +283,19 @@ export function openFakturForm(jenis) {
         })
       );
 
-      form.querySelector('[data-options="status"]').addEventListener('click', () => {
-        extra.hidden = f.status.value === 'lunas';
-        dibayarWrap.hidden = f.status.value !== 'sebagian';
-      });
-
       form.addEventListener('submit', (e) => {
         e.preventDefault();
         if (!lines.length) return invalid(addBtn, 'Tambahkan minimal satu barang.');
 
         const t = total();
         if (!t) return invalid(addBtn, 'Total masih Rp 0. Periksa harga barangnya.');
-        const status = f.status.value;
-        const bayarSebagian = parseMoney(f.dibayar.value);
-        if (status === 'sebagian' && !bayarSebagian) return invalid(f.dibayar, 'Isi berapa yang sudah dibayar.');
-        if (status === 'sebagian' && bayarSebagian >= t) {
-          return invalid(f.dibayar, `Harus kurang dari total ${rupiah(t)}. Kalau sudah dibayar penuh, pilih "Lunas".`);
-        }
-        const dibayar = status === 'lunas' ? t : status === 'belum' ? 0 : bayarSebagian;
-        if (dibayar < t && !f.pihakId.value) {
-          return invalid(form.querySelector('[data-pihak-picker]'), `Pilih ${cfg.pihakLabel.toLowerCase()} supaya ${cfg.sisa}nya tercatat.`);
-        }
 
         add('transaksi', {
           jenis,
-          pihakId: f.pihakId.value || undefined,
           items: lines.map(({ itemId, nama, qty, harga }) => ({ itemId, nama, qty, harga })),
           total: t,
-          dibayar,
-          jatuhTempo: dibayar < t ? f.jatuhTempo.value : null,
-          akunId: f.akunId.value,
+          dibayar: t,
+          akunId: 'kas',
           tanggal: f.tanggal.value,
           catatan: f.catatan.value.trim(),
         });
@@ -335,242 +304,6 @@ export function openFakturForm(jenis) {
       });
 
       renderLines();
-    },
-  });
-}
-
-// ===== POS Cepat =====
-export function openPOS() {
-  const cart = new Map(); // itemId -> qty
-
-  openSheet({
-    title: 'Kasir',
-    body: `
-      <div class="pos">
-        <input class="input" type="search" placeholder="Cari barang..." data-search>
-        <div class="pos-grid"></div>
-      </div>
-      <div class="pos-bar" hidden>
-        <button type="button" class="pos-cart pressable" data-checkout>
-          <span class="pos-count" data-count>0</span>
-          <span class="grow"><small>Total</small><strong data-sum>Rp 0</strong></span>
-          <span class="pos-pay">Bayar <span class="icon">arrow_forward</span></span>
-        </button>
-      </div>`,
-    onMount(body) {
-      const grid = body.querySelector('.pos-grid');
-      const bar = body.querySelector('.pos-bar');
-      let query = '';
-
-      const renderGrid = () => {
-        const rows = getAll('item')
-          .filter((i) => i.nama.toLowerCase().includes(query.toLowerCase()))
-          .sort((a, b) => a.nama.localeCompare(b.nama));
-
-        grid.innerHTML = rows.length
-          ? rows.map((it) => {
-              const st = stokStatus(it);
-              const qty = cart.get(it.id) || 0;
-              return `
-                <button type="button" class="pos-tile pressable ${qty ? 'in-cart' : ''}" data-id="${it.id}">
-                  ${itemAvatar(it, 'lg')}
-                  <strong>${esc(it.nama)}</strong>
-                  <small>${rupiah(it.hargaJual)}</small>
-                  <span class="stok-badge ${st.cls}">Stok ${st.s}</span>
-                  ${qty ? `<span class="pos-qty">${qty}</span>` : ''}
-                </button>`;
-            }).join('')
-          : `<p class="list-empty">Belum ada barang. Tambahkan dulu lewat Menu → Stok Barang.</p>`;
-      };
-
-      const updateBar = () => {
-        let count = 0;
-        let sum = 0;
-        cart.forEach((qty, id) => {
-          count += qty;
-          sum += qty * (getById('item', id)?.hargaJual || 0);
-        });
-        bar.hidden = !count;
-        body.querySelector('[data-count]').textContent = count;
-        body.querySelector('[data-sum]').textContent = rupiah(sum);
-      };
-
-      grid.addEventListener('click', (e) => {
-        const tile = e.target.closest('[data-id]');
-        if (!tile) return;
-        const id = tile.dataset.id;
-        const qty = (cart.get(id) || 0) + 1;
-        cart.set(id, qty);
-
-        tile.classList.add('in-cart');
-        let badge = tile.querySelector('.pos-qty');
-        if (!badge) {
-          badge = document.createElement('span');
-          badge.className = 'pos-qty';
-          tile.appendChild(badge);
-        }
-        badge.textContent = qty;
-        badge.classList.remove('pop');
-        void badge.offsetWidth;
-        badge.classList.add('pop');
-        updateBar();
-      });
-
-      body.querySelector('[data-search]').addEventListener('input', (e) => {
-        query = e.target.value;
-        renderGrid();
-      });
-
-      body.querySelector('[data-checkout]').addEventListener('click', () =>
-        openCheckout(cart, {
-          onChange: () => { renderGrid(); updateBar(); },
-          onDone: (hasil) => {
-            cart.clear();
-            renderGrid();
-            updateBar();
-            showSuccess(hasil);
-          },
-        })
-      );
-
-      renderGrid();
-    },
-  });
-}
-
-function quickCash(t) {
-  return [...new Set([t, Math.ceil(t / 10000) * 10000, Math.ceil(t / 50000) * 50000, Math.ceil(t / 100000) * 100000])];
-}
-
-function openCheckout(cart, { onChange, onDone }) {
-  const lines = () =>
-    [...cart].map(([id, qty]) => {
-      const it = getById('item', id);
-      return { itemId: id, nama: it.nama, satuan: it.satuan, qty, harga: it.hargaJual };
-    });
-  const total = () => lines().reduce((s, l) => s + l.qty * l.harga, 0);
-
-  openSheet({
-    title: 'Pembayaran',
-    body: `
-      <form class="form" novalidate>
-        <div class="lines"></div>
-        <div class="total-box"><span>Total</span><strong data-total>Rp 0</strong></div>
-        ${moneyField('diterima', 'Uang dari pembeli')}
-        <div class="options quick-cash"></div>
-        <div class="hint"><span data-change-label>Kembalian</span><strong data-change>Rp 0</strong></div>
-        ${akunField()}
-        ${submitButton('Selesai')}
-      </form>`,
-    onMount(body, close) {
-      const form = body.querySelector('form');
-      const f = form.elements;
-      const linesEl = form.querySelector('.lines');
-      const quickEl = form.querySelector('.quick-cash');
-      bindFields(form);
-
-      const updateChange = () => {
-        const diterima = parseMoney(f.diterima.value) || total();
-        const selisih = diterima - total();
-        form.querySelector('[data-change-label]').textContent = selisih < 0 ? 'Kurang' : 'Kembalian';
-        const el = form.querySelector('[data-change]');
-        el.textContent = rupiah(Math.abs(selisih));
-        el.className = selisih < 0 ? 'amount-out' : 'amount-in';
-      };
-
-      const render = () => {
-        const ls = lines();
-        if (!ls.length) { close(); return; }
-
-        linesEl.innerHTML = ls.map((l) => `
-          <div class="line">
-            <div class="line-top">
-              <strong>${esc(l.nama)}</strong>
-              <span class="line-sub">${rupiah(l.qty * l.harga)}</span>
-            </div>
-            <div class="line-bottom">
-              <span class="line-unit">${rupiah(l.harga)} / ${esc(l.satuan)}</span>
-              <div class="stepper">
-                <button type="button" data-dec="${l.itemId}"><span class="icon">${l.qty === 1 ? 'delete' : 'remove'}</span></button>
-                <span>${l.qty}</span>
-                <button type="button" data-inc="${l.itemId}"><span class="icon">add</span></button>
-              </div>
-            </div>
-            ${stokWarning('penjualan', l)}
-          </div>`).join('');
-
-        const t = total();
-        form.querySelector('[data-total]').textContent = rupiah(t);
-        quickEl.innerHTML = quickCash(t).map((v, i) => `
-          <button type="button" class="opt" data-cash="${v}">${i === 0 ? 'Uang pas' : 'Rp ' + rupiahSingkat(v)}</button>
-        `).join('');
-        updateChange();
-      };
-
-      linesEl.addEventListener('click', (e) => {
-        const inc = e.target.closest('[data-inc]');
-        const dec = e.target.closest('[data-dec]');
-        if (inc) cart.set(inc.dataset.inc, cart.get(inc.dataset.inc) + 1);
-        if (dec) {
-          const id = dec.dataset.dec;
-          const q = cart.get(id) - 1;
-          q > 0 ? cart.set(id, q) : cart.delete(id);
-        }
-        if (inc || dec) { render(); onChange(); }
-      });
-
-      quickEl.addEventListener('click', (e) => {
-        const b = e.target.closest('[data-cash]');
-        if (!b) return;
-        quickEl.querySelectorAll('.opt').forEach((o) => o.classList.toggle('active', o === b));
-        setMoney(f.diterima, +b.dataset.cash);
-        updateChange();
-      });
-
-      f.diterima.addEventListener('input', () => {
-        quickEl.querySelectorAll('.opt').forEach((o) => o.classList.remove('active'));
-        updateChange();
-      });
-
-      form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const t = total();
-        const diterima = parseMoney(f.diterima.value) || t;
-        if (diterima < t) return invalid(f.diterima, `Uangnya kurang ${rupiah(t - diterima)}. Total belanja ${rupiah(t)}.`);
-
-        add('transaksi', {
-          jenis: 'penjualan',
-          items: lines().map(({ itemId, nama, qty, harga }) => ({ itemId, nama, qty, harga })),
-          total: t,
-          dibayar: t,
-          akunId: f.akunId.value,
-          tanggal: toDateKey(),
-          catatan: 'POS',
-        });
-        close();
-        onDone({ total: t, kembalian: diterima - t });
-      });
-
-      render();
-    },
-  });
-}
-
-function showSuccess({ total, kembalian }) {
-  openSheet({
-    title: '',
-    body: `
-      <div class="success">
-        <div class="success-check">
-          <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-15"/></svg>
-        </div>
-        <h3>Jualan tersimpan</h3>
-        <p>${rupiah(total)}</p>
-        ${kembalian ? `<div class="hint"><span>Kembalian</span><strong class="amount-in">${rupiah(kembalian)}</strong></div>` : ''}
-        <button class="btn btn-primary pressable" data-ok>Jualan Baru</button>
-      </div>`,
-    onMount(body, close) {
-      body.querySelector('[data-ok]').addEventListener('click', close);
     },
   });
 }

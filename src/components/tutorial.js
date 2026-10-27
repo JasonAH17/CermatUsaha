@@ -9,24 +9,24 @@ const key = () => `cermatusaha:tutorial:v1:${currentUser()?.id}`;
 
 const SLIDES = [
   {
-    icon: 'add', tone: 'brand',
-    title: 'Catat uang masuk & keluar',
-    text: 'Tekan tombol <b>＋ Catat</b> di bawah layar. Pilih jualan, belanja, atau biaya, isi jumlahnya, selesai.',
+    icon: 'document_scanner', tone: 'brand',
+    title: 'Upload nota, stok terisi sendiri',
+    text: 'Tekan <b>＋ Tambah</b>, lalu foto atau pilih file nota. Cermat AI membacanya, Anda <b>cek dulu</b> sebelum disimpan.',
   },
   {
-    icon: 'document_scanner', tone: 'brand',
-    title: 'Scan struk, tanpa ngetik',
-    text: 'Foto nota belanja. Total dan barangnya dibaca otomatis, Anda <b>cek dulu</b> sebelum disimpan.',
+    icon: 'add', tone: 'brand',
+    title: 'Catat jualan & biaya',
+    text: 'Di <b>＋ Tambah</b> juga ada Jualan, Belanja Stok, dan Biaya Usaha. Cukup isi jumlahnya, selesai.',
   },
   {
     icon: 'forum', tone: 'brand',
     title: 'Tanya Cermat AI',
-    text: 'Bingung untung atau rugi? Tanya saja pakai bahasa sehari-hari, jawabannya dari data usaha Anda.',
+    text: 'Tanya pakai bahasa sehari-hari, atau kirim file laporan (PDF, Excel, Word) untuk dibahas.',
   },
   {
-    icon: 'description', tone: 'brand',
-    title: 'Laporan rapi otomatis',
-    text: 'Laporan untung rugi dan buku kas tersusun sendiri, siap diunduh PDF kapan saja.',
+    icon: 'history', tone: 'brand',
+    title: 'Semua tercatat rapi',
+    text: 'Di <b>Riwayat</b> ada uang masuk-keluar, alur stok, dan percakapan AI. Laporan PDF ada di <b>Pengaturan</b>.',
   },
 ];
 
@@ -35,7 +35,7 @@ const markSeen = () => { try { localStorage.setItem(key(), '1'); } catch { /* ab
 
 export function maybeShowTutorial() {
   if (!currentUser()) return;
-  const kosong = !getAll('transaksi').length && !getAll('pihak').length && !getAll('item').length;
+  const kosong = !getAll('transaksi').length && !getAll('item').length;
   if (!seen() && kosong) openTutorial();
 }
 
@@ -63,7 +63,7 @@ export function openTutorial() {
       <section class="tut-slide">
         <span class="tut-art tone-brand"><span class="icon">storefront</span></span>
         <h2>Apa nama usaha Anda?</h2>
-        <p>Dipakai di beranda dan di kop laporan. Bisa diubah nanti di Menu.</p>
+        <p>Dipakai di beranda dan di kop laporan. Bisa diubah nanti di Pengaturan.</p>
         <input class="input tut-input" data-nama placeholder="Contoh: Warung Bu Sri" value="${esc(getProfil().namaUsaha === 'Usaha Saya' ? '' : getProfil().namaUsaha)}" aria-label="Nama usaha">
       </section>
     </div>

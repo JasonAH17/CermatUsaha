@@ -2,7 +2,7 @@ import '../styles/form.css';
 import '../styles/item.css';
 import '../styles/list.css';
 import '../styles/report.css';
-import { getById, getProfil } from '../data/store.js';
+import { getProfil } from '../data/store.js';
 import { REPORTS, buildReport, formatValue } from '../data/reports.js';
 import { toDateKey } from '../utils/format.js';
 import { esc } from '../components/fields.js';
@@ -30,38 +30,27 @@ function periodRange(key) {
 }
 
 export const laporan = {
-  render({ id } = {}) {
-    const pihak = id && getById('pihak', id);
-    if (id && !pihak) {
-      return `
-        <div class="card empty">
-          <span class="icon empty-icon">description</span>
-          <p class="empty-title">Kontak tidak ditemukan</p>
-          <a href="#/pihak" class="btn-link">Kembali</a>
-        </div>`;
-    }
-
+  render() {
     return `
       <header class="page-header">
-        <button class="icon-btn sm pressable" data-back="${pihak ? `/pihak/${id}` : '/lainnya'}" aria-label="Kembali">
+        <button class="icon-btn sm pressable" data-back="/pengaturan" aria-label="Kembali">
           <span class="icon">arrow_back</span>
         </button>
         <span class="titles">
-          <h1>${pihak ? 'Laporan Kontak' : 'Laporan Keuangan'}</h1>
-          <small>${pihak ? esc(pihak.nama) : 'Tersusun otomatis dari catatan Anda'}</small>
+          <h1>Laporan Keuangan</h1>
+          <small>Tersusun otomatis dari catatan Anda</small>
         </span>
       </header>
 
       <div class="list-page stagger report-page">
-        ${pihak ? '' : `
-          <div class="report-types" style="--i:0">
-            ${Object.entries(REPORTS).map(([key, r]) => `
-              <button class="report-type pressable ${key === 'bukukas' ? 'active' : ''}" data-type="${key}">
-                <span class="row-icon tone-brand"><span class="icon">${r.icon}</span></span>
-                <strong>${r.label}</strong>
-                <small>${r.desc}</small>
-              </button>`).join('')}
-          </div>`}
+        <div class="report-types" style="--i:0">
+          ${Object.entries(REPORTS).map(([key, r]) => `
+            <button class="report-type pressable ${key === 'bukukas' ? 'active' : ''}" data-type="${key}">
+              <span class="row-icon tone-brand"><span class="icon">${r.icon}</span></span>
+              <strong>${r.label}</strong>
+              <small>${r.desc}</small>
+            </button>`).join('')}
+        </div>
 
         <div class="hscroll" style="--i:1">
           ${PERIODS.map((p) => `
@@ -85,10 +74,8 @@ export const laporan = {
     `;
   },
 
-  mount(view, { id } = {}) {
-    if (id && !getById('pihak', id)) return;
-
-    let type = id ? 'pihak' : 'bukukas';
+  mount(view) {
+    let type = 'bukukas';
     let [from, to] = periodRange('bulan');
     let current = null;
 
@@ -100,7 +87,7 @@ export const laporan = {
     toEl.value = to;
 
     const renderPreview = () => {
-      current = buildReport(type, { from, to, id });
+      current = buildReport(type, { from, to });
       const r = current;
       const wide = r.columns.length > 3;
 
